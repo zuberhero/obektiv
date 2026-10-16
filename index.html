@@ -149,7 +149,7 @@ function render(now){
  if(frozen&&frozenImage)ctx.drawImage(frozenImage,0,0,w,h);
  else if(video.readyState>=2){
   const z=+zoom.value/100,sw=video.videoWidth/z,sh=video.videoHeight/z,sx=(video.videoWidth-sw)/2,sy=(video.videoHeight-sh)/2;
-  ctx.save();ctx.filter="brightness("+Math.pow(2,+exp.value/100).toFixed(2)+") blur("+((+focus.value/100)*14).toFixed(1)+"px)";
+  ctx.save();display.style.filter="brightness("+Math.pow(2,+exp.value/100).toFixed(2)+") blur("+((+focus.value/100)*14).toFixed(1)+"px)";
   ctx.drawImage(video,sx,sy,sw,sh,0,0,w,h);ctx.restore();
  }
  raf=requestAnimationFrame(render);
@@ -171,7 +171,7 @@ async function begin(){
  say("Меняй зум, экспозицию и размытие — изображение и музыка будут меняться вместе.");
  }catch(e){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}say("Не удалось запустить: "+(e.message||"проверь разрешения"))}finally{start.disabled=false}
 }
-function stop(){playing=false;clearInterval(scheduler);cancelAnimationFrame(raf);if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;frozen=false;frozenImage=null;hint.hidden=false;freeze.disabled=true;start.textContent="▶ ВКЛЮЧИТЬ";badge.textContent="КАМЕРА ВЫКЛЮЧЕНА";say("Остановлено.")}
+function stop(){display.style.filter="none";playing=false;clearInterval(scheduler);cancelAnimationFrame(raf);if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;frozen=false;frozenImage=null;hint.hidden=false;freeze.disabled=true;start.textContent="▶ ВКЛЮЧИТЬ";badge.textContent="КАМЕРА ВЫКЛЮЧЕНА";say("Остановлено.")}
 start.addEventListener("click",begin);
 vol.addEventListener("input",()=>{$("volText").textContent=vol.value+"%";if(audio)mix.gain.setTargetAtTime(.45*(+vol.value/100)/.35,audio.currentTime,.07)});
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&playing){stop();say("Камера остановлена при переходе приложения в фон.")}});
