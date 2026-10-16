@@ -4,7 +4,7 @@
 </style><style>
 .optics{margin:12px 0 0;padding:14px;border:1px solid #526057;border-radius:14px;display:grid;gap:8px}.opticsHead{display:flex;justify-content:space-between;align-items:center;gap:12px}.optics h2{margin:0;font-size:13px;letter-spacing:.12em}.optics button{background:#303833;color:#e9f1e9;border:1px solid #677368;border-radius:8px;min-height:40px;padding:0 14px;font-weight:700}.optic label{display:flex;justify-content:space-between;font-size:13px}.optic output{font-variant-numeric:tabular-nums;color:#e4ff83}.optic input{width:100%;min-height:40px;accent-color:#e4ff83}.meters details summary{cursor:pointer;font-size:13px;font-weight:750;letter-spacing:.09em;min-height:38px;display:flex;align-items:center}.meters details .metric:first-of-type{margin-top:14px}.hintText{font-size:12px;color:#a9b6ae;line-height:1.45}.stage canvas{touch-action:pan-y}
 </style></head><body><main>
-<header><h1>ОБЪЕКТИВ</h1><span>СОЗЕРЦАНИЕ · 0.3.2</span></header>
+<header><h1>ОБЪЕКТИВ</h1><span>СОЗЕРЦАНИЕ · 0.3.3</span></header>
 <div class="stage"><video id="video" muted playsinline autoplay></video><canvas id="display" aria-label="Живое изображение с задней камеры"></canvas><div id="badge" class="badge">КАМЕРА ВЫКЛЮЧЕНА</div><div id="hint" class="overlay">Нажми «Включить» и разреши доступ к задней камере.<br>Изображение станет музыкальной партитурой.</div></div>
 <div class="switcher" aria-label="Музыкальный стиль"><button id="snow" type="button" aria-pressed="true">❄ СНЕГ · ЭМБИЕНТ</button><button id="neon" type="button" aria-pressed="false">✦ НЕОН · СИНТ</button></div>
 <div class="actions"><button id="start" class="primary" type="button">▶ ВКЛЮЧИТЬ</button><button id="freeze" type="button" disabled>ЗАМОРОЗИТЬ</button></div>
@@ -24,7 +24,7 @@ const work=document.createElement("canvas");work.width=160;work.height=120;
 const wc=work.getContext("2d",{willReadFrequently:true});
 const badge=$("badge"),hint=$("hint"),status=$("status"),start=$("start"),freeze=$("freeze"),vol=$("volume");
 const zoom=$("zoom"),exp=$("exposure"),focus=$("focus");
-let stream=null,audio=null,mix=null,compressor=null,eq=null,delay=null,delayGain=null,reverb=null,reverbGain=null;
+let stream=null,audio=null,mix=null,compressor=null,eq=null,lowpass=null,delay=null,delayGain=null,reverb=null,reverbGain=null;
 let playing=false,frozen=false,frozenImage=null,raf=0,scheduler=0,style="snow",frame={light:.45,hue:.55,detail:.2},smooth={...frame},step=0,nextTime=0,lastAnalyze=0,harmony=0;
 const scale=[0,2,3,5,7,8,10], progressions=[[0,3,7],[5,8,12],[3,7,10],[7,10,14]];
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x)),hz=n=>440*Math.pow(2,(n-69)/12);
