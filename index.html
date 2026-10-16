@@ -4,7 +4,7 @@
 </style><style>
 .optics{margin:12px 0 0;padding:14px;border:1px solid #526057;border-radius:14px;display:grid;gap:8px}.opticsHead{display:flex;justify-content:space-between;align-items:center;gap:12px}.optics h2{margin:0;font-size:13px;letter-spacing:.12em}.optics button{background:#303833;color:#e9f1e9;border:1px solid #677368;border-radius:8px;min-height:40px;padding:0 14px;font-weight:700}.optic label{display:flex;justify-content:space-between;font-size:13px}.optic output{font-variant-numeric:tabular-nums;color:#e4ff83}.optic input{width:100%;min-height:40px;accent-color:#e4ff83}.meters details summary{cursor:pointer;font-size:13px;font-weight:750;letter-spacing:.09em;min-height:38px;display:flex;align-items:center}.meters details .metric:first-of-type{margin-top:14px}.hintText{font-size:12px;color:#a9b6ae;line-height:1.45}.stage canvas{touch-action:pan-y}
 </style></head><body><main>
-<header><h1>ОБЪЕКТИВ</h1><span>СОЗЕРЦАНИЕ · 0.3.3</span></header>
+<header><h1>ОБЪЕКТИВ</h1><span>СОЗЕРЦАНИЕ · 0.3.4</span></header>
 <div class="stage"><video id="video" muted playsinline autoplay></video><canvas id="display" aria-label="Живое изображение с задней камеры"></canvas><div id="badge" class="badge">КАМЕРА ВЫКЛЮЧЕНА</div><div id="hint" class="overlay">Нажми «Включить» и разреши доступ к задней камере.<br>Изображение станет музыкальной партитурой.</div></div>
 <div class="switcher" aria-label="Музыкальный стиль"><button id="snow" type="button" aria-pressed="true">❄ СНЕГ · ЭМБИЕНТ</button><button id="neon" type="button" aria-pressed="false">✦ НЕОН · СИНТ</button></div>
 <div class="actions"><button id="start" class="primary" type="button">▶ ВКЛЮЧИТЬ</button><button id="freeze" type="button" disabled>ЗАМОРОЗИТЬ</button></div>
@@ -14,7 +14,7 @@
 <div class="optic"><label for="focus">Фокус / размытие <output id="focusVal">0%</output></label><input id="focus" type="range" min="0" max="100" value="0" step="5"></div>
 <div class="hintText">Это программные настройки изображения, не аппаратное управление объективом. Звук анализирует именно обработанный кадр.</div></section>
 <section class="meters" aria-label="Как камера управляет музыкой"><details open><summary>КАК ЗВУЧИТ КАРТИНКА</summary><div class="metric"><span>Свет</span><div class="track"><i id="lightBar"></i></div><output id="lightText">—</output></div><div class="metric"><span>Цвет</span><div class="track"><i id="colorBar"></i></div><output id="colorText">—</output></div><div class="metric"><span>Детали</span><div class="track"><i id="detailBar"></i></div><output id="detailText">—</output></div><div id="explain" class="explain">Свет раскрывает тембр, цвет выбирает тональный центр, детали влияют на количество нот. Смена гармонии происходит медленно, чтобы музыка оставалась цельной.</div></details></section><div class="control"><label for="volume"><span>Громкость</span><output id="volText">35%</output></label><input id="volume" type="range" min="0" max="100" value="35"></div>
-<div id="status" class="notice" role="status">Для запуска потребуется HTTPS, разрешение на камеру и одно нажатие для включения звука.</div><div class="foot">Видео остаётся на телефоне. Длительное наблюдение требует открытого приложения и питания.</div>
+<button type="button" id="audioTest" style="width:100%;min-height:46px;border-radius:10px;background:#292e2c;border:1px solid #707a73;color:#f3f4ec;font-weight:700;margin:8px 0">♪ ПРОВЕРИТЬ ЗВУК</button><div id="audioState" class="notice">Аудио: ещё не запускалось</div><div id="status" class="notice" role="status">Для запуска потребуется HTTPS, разрешение на камеру и одно нажатие для включения звука.</div><div class="foot">Видео остаётся на телефоне. Длительное наблюдение требует открытого приложения и питания.</div>
 </main><script>
 (()=>{
 "use strict";
@@ -71,6 +71,16 @@ function voice(note,at,duration,loud,kind){
   o.onended=()=>{o.disconnect();g.disconnect()};
  }
  setTimeout(()=>{try{tone.disconnect();env.disconnect()}catch(e){}},Math.max(1000,Math.ceil((at-audio.currentTime+duration+release+1)*1000)));
+}
+function testSound(){
+ if(!audio||audio.state!=="running")return;
+ // Brief soft sine confirmation, independent of scheduler.
+ const now=audio.currentTime,osc=audio.createOscillator(),gain=audio.createGain();
+ osc.type="sine";osc.frequency.value=440;
+ gain.gain.setValueAtTime(.00001,now);
+ gain.gain.linearRampToValueAtTime(.09,now+.03);
+ gain.gain.exponentialRampToValueAtTime(.00001,now+.38);
+ osc.connect(gain);gain.connect(audio.destination);osc.start(now);osc.stop(now+.4);
 }
 function percussive(at,level){if(!audio||audio.state!=="running")return;const o=audio.createOscillator(),g=audio.createGain();o.type="sine";o.frequency.setValueAtTime(100,at);o.frequency.exponentialRampToValueAtTime(57,at+.11);g.gain.setValueAtTime(level,at);g.gain.exponentialRampToValueAtTime(.0001,at+.19);o.connect(g);g.connect(mix);o.start(at);o.stop(at+.2)}
 function seedDegree(){return Math.min(6,Math.floor(clamp(smooth.hue,0,.999)*7))}
@@ -164,15 +174,26 @@ async function begin(){
  start.disabled=true;say("Запрашиваю заднюю камеру…");
  try{
  if(!navigator.mediaDevices?.getUserMedia)throw Error("Для камеры нужен Safari и HTTPS.");
+ // Unlock Web Audio synchronously in the user gesture, BEFORE waiting for camera permission.
+ initSound();
+ const unlock=audio.resume();
  stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:640},height:{ideal:480},frameRate:{ideal:12,max:18}}});
- video.srcObject=stream;await video.play();initSound();await audio.resume();if(audio.state!=="running")throw Error("Звук не разблокирован.");
+ video.srcObject=stream;await video.play();
+ // Never hang on an iOS AudioContext resume promise after camera permission.
+ await Promise.race([unlock.catch(()=>{}),new Promise(resolve=>setTimeout(resolve,700))]);
+ if(audio.state!=="running")audio.resume().catch(()=>{});
+ if(audio.state==="running")testSound();
  playing=true;frozen=false;frozenImage=null;step=0;harmony=0;nextTime=audio.currentTime+.16;
  scheduler=setInterval(schedule,55);raf=requestAnimationFrame(render);badge.textContent="● LIVE · ЗАДНЯЯ КАМЕРА";hint.hidden=true;freeze.disabled=false;freeze.textContent="ЗАМОРОЗИТЬ";start.textContent="■ ОСТАНОВИТЬ";
- say("Меняй зум, экспозицию и размытие — изображение и музыка будут меняться вместе.");
- }catch(e){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}say("Не удалось запустить: "+(e.message||"проверь разрешения"))}finally{start.disabled=false}
+ $("audioState").textContent="Аудио: "+audio.state; say("Меняй зум, экспозицию и размытие — изображение и музыка будут меняться вместе.");
+ }catch(e){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}say("Не удалось запустить: "+(e.message||"проверь разрешения"));$("audioState").textContent="Аудио: "+(audio?.state||"не создано")}finally{start.disabled=false}
 }
 function stop(){display.style.filter="none";playing=false;clearInterval(scheduler);cancelAnimationFrame(raf);if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;frozen=false;frozenImage=null;hint.hidden=false;freeze.disabled=true;start.textContent="▶ ВКЛЮЧИТЬ";badge.textContent="КАМЕРА ВЫКЛЮЧЕНА";say("Остановлено.")}
 start.addEventListener("click",begin);
+$("audioTest").addEventListener("click",async()=>{
+ try{initSound();const pending=audio.resume();testSound();await Promise.race([pending,new Promise(r=>setTimeout(r,500))]);testSound();$("audioState").textContent="Аудио: "+audio.state+" · частота "+audio.sampleRate+" Гц";say(audio.state==="running"?"Должен прозвучать короткий чистый сигнал 440 Гц.":"iOS пока блокирует звуковой контекст.");}
+ catch(e){$("audioState").textContent="Ошибка аудио: "+e.message;}
+});
 vol.addEventListener("input",()=>{$("volText").textContent=vol.value+"%";if(audio)mix.gain.setTargetAtTime(.28*(+vol.value/100)/.35,audio.currentTime,.07)});
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&playing){stop();say("Камера остановлена при переходе приложения в фон.")}});
 window.addEventListener("pagehide",()=>{if(playing)stop()});
