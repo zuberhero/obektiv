@@ -13,7 +13,7 @@
 <div class="optic"><label for="exposure">Экспозиция <output id="expVal">0,0 EV</output></label><input id="exposure" type="range" min="-200" max="200" value="0" step="10"></div>
 <div class="optic"><label for="focus">Фокус / размытие <output id="focusVal">0%</output></label><input id="focus" type="range" min="0" max="100" value="0" step="5"></div>
 <div class="hintText">Это программные настройки изображения, не аппаратное управление объективом. Звук анализирует именно обработанный кадр.</div></section>
-<section class="meters" aria-label="Как камера управляет музыкой"><details open><summary>КАК ЗВУЧИТ КАРТИНКА</summary><div class="metric"><span>Свет</span><div class="track"><i id="lightBar"></i></div><output id="lightText">—</output></div><div class="metric"><span>Цвет</span><div class="track"><i id="colorBar"></i></div><output id="colorText">—</output></div><div class="metric"><span>Детали</span><div class="track"><i id="detailBar"></i></div><output id="detailText">—</output></div><div id="explain" class="explain">Свет раскрывает тембр, цвет выбирает тональный центр, детали влияют на количество нот. Смена гармонии происходит медленно, чтобы музыка оставалась цельной.</div></details></section><div class="control"><label for="volume"><span>Громкость</span><output id="volText">35%</output></label><input id="volume" type="range" min="0" max="100" value="35"></div>
+<section class="meters" aria-label="Как камера управляет музыкой"><details open><summary>КАК ЗВУЧИТ КАРТИНКА</summary><div class="metric"><span>Свет</span><div class="track"><i id="lightBar"></i></div><output id="lightText">—</output></div><div class="metric"><span>Цвет</span><div class="track"><i id="colorBar"></i></div><output id="colorText">—</output></div><div class="metric"><span>Детали</span><div class="track"><i id="detailBar"></i></div><output id="detailText">—</output></div><div id="explain" class="explain">Свет раскрывает тембр, цвет выбирает тональный центр, детали влияют на количество нот. Контраст и смена цвета заметно меняют мелодию и гармонию.</div></details></section><div class="control"><label for="volume"><span>Громкость</span><output id="volText">35%</output></label><input id="volume" type="range" min="0" max="100" value="35"></div>
 <button type="button" id="audioTest" style="width:100%;min-height:46px;border-radius:10px;background:#292e2c;border:1px solid #707a73;color:#f3f4ec;font-weight:700;margin:8px 0">♪ ПРОВЕРИТЬ ЗВУК</button><div id="audioState" class="notice">Аудио: ещё не запускалось</div><div id="status" class="notice" role="status">Для запуска потребуется HTTPS, разрешение на камеру и одно нажатие для включения звука.</div><div class="foot">Видео остаётся на телефоне. Длительное наблюдение требует открытого приложения и питания.</div>
 </main><script>
 (()=>{
@@ -89,30 +89,30 @@ function tick(at){
  if(style==="snow"){
   // Wide, unhurried harmony with sparse high notes; no rumbling sub-bass.
   const snowChords=[[0,4,7,11],[5,9,12,16],[3,7,10,14],[7,11,14,17]];
-  if(step%32===0)harmony=(harmony+1)%4;
+  if(step%16===0)harmony=(harmony+1+Math.floor(smooth.hue*4))%4;
   const chord=snowChords[harmony];
-  const tonic=48+Math.floor(smooth.hue*3)*2;
+  const tonic=48+Math.floor(smooth.hue*6)*2;
   if(step%16===0){for(let i=0;i<4;i++)voice(tonic+chord[i]+5,at,5.2,.013+light*.004,"pad")}
-  if(step%8===2 || (step%16===12&&detail>.22)){
-   const n=chord[(Math.floor(step/8)+Math.floor(detail*4))%4];
-   voice(tonic+12+n,at,1.35,.016+light*.005,"bell");
+  if(step%8===2 || (step%8===6&&detail>.10) || (step%4===0&&detail>.32)){
+   const n=chord[(Math.floor(step/8)+Math.floor(detail*9))%4];
+   voice(tonic+12+n,at,1.35,.022+light*.012,"bell");
   }
  }else{
   // Separate neon composition: driving bass ostinato and repeating syncopated hooks.
   const neoChords=[[0,3,7],[0,5,8],[3,7,10],[2,7,10]];
-  if(step%16===0)harmony=(harmony+1)%4;
-  const chord=neoChords[harmony],tonic=45+Math.floor(smooth.hue*3)*2;
+  if(step%16===0)harmony=(harmony+1+Math.floor(smooth.hue*4))%4;
+  const chord=neoChords[harmony],tonic=45+Math.floor(smooth.hue*6)*2;
   if(step%16===0){for(const n of chord)voice(tonic+12+n,at,2.4,.017,"pad")}
   if(step%4===0){percussive(at,.018)}
   const riff=[0,2,1,2,0,1,2,1],p=step%8;
-  if(step%2===0||detail>.36)voice(tonic+24+chord[riff[p]],at,.20,.016+light*.004,"bell");
+  if(step%2===0||detail>.16)voice(tonic+24+chord[(riff[p]+Math.floor(detail*6))%3],at,.20,.021+light*.010,"bell");
  }
  step++;
 }
 function schedule(){
  if(!playing||!audio||audio.state!=="running")return;
  const beat=60/(style==="snow"?66:106)/4;
- const cutoff=style==="snow"?650+smooth.light*2400:1000+smooth.light*3200;
+ const cutoff=style==="snow"?450+Math.pow(smooth.light,1.5)*3900:750+Math.pow(smooth.light,1.5)*4300;
  lowpass.frequency.setTargetAtTime(cutoff,audio.currentTime,.55);
  reverbGain.gain.setTargetAtTime(style==="snow"?.075:.045,audio.currentTime,.5);
  while(nextTime<audio.currentTime+.17){tick(nextTime);nextTime+=beat}
@@ -133,11 +133,11 @@ function opticsFrame(){
 function measure(){
  const w=32,h=24,data=wc.getImageData(0,0,160,120).data;let bright=0,R=0,G=0,B=0,detail=0;
  for(let y=0;y<h;y++){for(let x=0;x<w;x++){const px=(y*5*160+x*5)*4,r=data[px]/255,g=data[px+1]/255,b=data[px+2]/255;const l=r*.2126+g*.7152+b*.0722;bright+=l;R+=r;G+=g;B+=b;if(x>0){const pp=px-20,pl=(data[pp]*.2126+data[pp+1]*.7152+data[pp+2]*.0722)/255;detail+=Math.abs(l-pl)}}}
- const n=w*h;bright/=n;R/=n;G/=n;B/=n;detail=clamp(detail/n*5,0,1);
+ const n=w*h;bright/=n;R/=n;G/=n;B/=n;detail=clamp(detail/n*11,0,1);
  const max=Math.max(R,G,B),min=Math.min(R,G,B),d=max-min;let hue=smooth.hue;
  if(d>.025){if(max===R)hue=((G-B)/d+6)%6;else if(max===G)hue=(B-R)/d+2;else hue=(R-G)/d+4;hue/=6}
  frame={light:bright,hue,detail};
- for(const k of ["light","hue","detail"])smooth[k]+=(frame[k]-smooth[k])*.17;
+ for(const k of ["light","hue","detail"])smooth[k]+=(frame[k]-smooth[k])*.42;
  meters();
 }
 function explain(){const isSnow=style==="snow";$("explain").textContent=(isSnow?"СНЕГ: мягкие многослойные аккорды, низкая основа и длинное пространственное затухание. ":"НЕОН: насыщенные синтезаторы, бас и арпеджиатор. ")+(smooth.light>.56?"Светлый кадр раскрывает тембр. ":"Темнота приглушает верхние частоты. ")+(smooth.detail>.24?"Детали добавляют мелодические события. ":"Простая фактура делает музыку разреженной. ")+"Цвет медленно влияет на тональный центр."}
@@ -154,7 +154,7 @@ function render(now){
  if(display.width!==w||display.height!==h){display.width=w;display.height=h}
  if(!frozen&&video.readyState>=2){
   opticsFrame();
-  if(now-lastAnalyze>400){measure();lastAnalyze=now}
+  if(now-lastAnalyze>180){measure();lastAnalyze=now}
  }
  if(frozen&&frozenImage)ctx.drawImage(frozenImage,0,0,w,h);
  else if(video.readyState>=2){
