@@ -1,9 +1,9 @@
 {
   "name": "ОБЪЕКТИВ — музыкальная камера",
   "short_name": "ОБЪЕКТИВ",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "id": "/obektiv/",
+  "start_url": "/obektiv/",
+  "scope": "/obektiv/",
   "display": "standalone",
   "background_color": "#101113",
   "theme_color": "#101113",
